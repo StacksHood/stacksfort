@@ -111,9 +111,9 @@
             ;; Validate amount > 0
             (asserts! (> amount u0) ERR_INVALID_AMOUNT)
             ;; Validate transaction type (0 = STX transfer, 1 = SIP-010 transfer)
-            (asserts! (or (= txn-type u0) (= txn-type u1)) ERR_INVALID_TXN_TYPE)
+            (asserts! (or (is-eq txn-type u0) (is-eq txn-type u1)) ERR_INVALID_TXN_TYPE)
             ;; For type 1 (SIP-010), validate that token contract is provided
-            (if (= txn-type u1)
+            (if (is-eq txn-type u1)
                 (asserts! (is-some token) ERR_INVALID_TOKEN)
                 true
             )
