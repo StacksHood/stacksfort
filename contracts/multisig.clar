@@ -83,6 +83,8 @@
             (asserts! (is-some (index-of (var-get signers) caller)) ERR_NOT_SIGNER)
             ;; Validate amount > 0
             (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+            ;; Validate transaction type (0 = STX transfer, 1 = SIP-010 transfer)
+            (asserts! (or (= txn-type u0) (= txn-type u1)) ERR_INVALID_TXN_TYPE)
             (ok u0)
         )
     )
