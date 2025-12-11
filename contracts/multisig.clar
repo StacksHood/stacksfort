@@ -81,6 +81,8 @@
         ;; Verify caller is a signer
         (let ((caller tx-sender))
             (asserts! (is-some (index-of (var-get signers) caller)) ERR_NOT_SIGNER)
+            ;; Validate amount > 0
+            (asserts! (> amount u0) ERR_INVALID_AMOUNT)
             (ok u0)
         )
     )
