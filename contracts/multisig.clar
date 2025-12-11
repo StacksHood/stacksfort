@@ -91,8 +91,6 @@
             (var-set initialized true)
             (ok true)
         )
-        )
-        )
     )
 )
 
