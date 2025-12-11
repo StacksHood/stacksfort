@@ -67,6 +67,14 @@
 ;; Public Functions
 ;; ============================================
 
+;; Issue #1: Initialize the multisig contract
+(define-public (initialize
+    (signers-list (list 100 principal))
+    (threshold-value uint)
+)
+    (response bool uint)
+)
+
 ;; Issue #2: Submit a new transaction proposal
 (define-public (submit-txn
     (txn-type uint)
