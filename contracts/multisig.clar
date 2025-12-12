@@ -144,3 +144,24 @@
         (ok (sha256 txn-buff))
     )
 )
+
+;; Issue #4: Extract and verify signer from signature
+(define-read-only (extract-signer
+    (message-hash (buff 32))
+    (signature (buff 65))
+)
+    (let ((recovered-key (secp256k1-recover? message-hash signature)))
+        (match recovered-key
+            pubkey
+                (match (principal-of? pubkey)
+                    signer
+                        (if (is-some (index-of (var-get signers) signer))
+                            (ok signer)
+                            ERR_INVALID_SIGNATURE
+                        )
+                    none ERR_INVALID_SIGNATURE
+                )
+            none ERR_INVALID_SIGNATURE
+        )
+    )
+)
