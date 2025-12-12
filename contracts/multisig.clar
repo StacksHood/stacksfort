@@ -136,9 +136,9 @@
 )
 
 ;; Issue #3: Hash a stored transaction for signature verification
-(define-read-only (hash-txn (txn-id uint))
+(define-read-only (hash-txn (target-id uint))
     (let (
-        (txn (unwrap! (map-get? transactions txn-id) ERR_INVALID_TXN_ID))
+        (txn (unwrap! (map-get? transactions target-id) ERR_INVALID_TXN_ID))
         (txn-buff (unwrap! (to-consensus-buff? txn) ERR_INVALID_TXN_ID))
     )
         (ok (sha256 txn-buff))
