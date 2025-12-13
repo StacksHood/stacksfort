@@ -20,7 +20,8 @@
     "toml": "^3.0.0",
     "chokidar-cli": "^3.0.0",
     "vitest": "^3.2.4",
-    "vitest-environment-clarinet": "^3.0.2"
+    "vitest-environment-clarinet": "^3.0.2",
+    "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@stacks/clarinet-sdk-wasm": "^3.11.0"
