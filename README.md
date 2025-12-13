@@ -110,6 +110,12 @@ npm run test
 
 ## Deployment
 
+### Mainnet Deployed Contracts
+
+The following contracts are deployed on Stacks mainnet:
+- MultiSig (stacksfort-v1): SP3TXKY0REKG6P3W6ACFB615N5556EC8VYS4MFA4D.stacksfort-v1
+
+
 To deploy to testnet:
 
 ```bash
