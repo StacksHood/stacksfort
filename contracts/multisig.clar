@@ -198,3 +198,44 @@
         err-code ERR_INVALID_SIGNATURE
     )
 )
+
+;; Issue #5: Count valid, unique signatures for a transaction
+(define-private (count-valid-unique-signature
+    (signature (buff 65))
+    (accumulator (tuple (txn-id uint) (hash (buff 32)) (count uint)))
+)
+    (match (extract-signer (get hash accumulator) signature)
+        ok signer
+            (let ((key (txn-signer-key (get txn-id accumulator) signer)))
+                (if (is-some (map-get? txn-signers key))
+                    accumulator
+                    (begin
+                        (map-set txn-signers key true)
+                        (tuple
+                            (txn-id (get txn-id accumulator))
+                            (hash (get hash accumulator))
+                            (count (+ (get count accumulator) u1))
+                        )
+                    )
+                )
+            )
+        err accumulator
+    )
+)
+
+;; Public helper to fold over signatures in tests
+(define-public (count-unique-valid-signatures
+    (target-id uint)
+    (signatures (list 100 (buff 65)))
+)
+    (let (
+        (txn-hash (unwrap! (hash-txn target-id) ERR_INVALID_TXN_ID))
+        (result (fold
+            count-valid-unique-signature
+            signatures
+            (build-signature-accumulator target-id txn-hash)
+        ))
+    )
+        (ok (get count result))
+    )
+)
