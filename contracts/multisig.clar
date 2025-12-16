@@ -298,6 +298,9 @@
             ;; Verify transaction hasn't been executed
             (asserts! (not (get executed txn)) ERR_TXN_ALREADY_EXECUTED)
 
+            ;; Verify transaction hasn't expired
+            (asserts! (< block-height (get expiration txn)) ERR_TXN_EXPIRED)
+
             ;; Verify signatures list length >= threshold
             (asserts! (>= (len signatures) (var-get threshold))
                 ERR_INSUFFICIENT_SIGNATURES
@@ -327,6 +330,7 @@
                                 recipient: (get recipient txn),
                                 token: (get token txn),
                                 executed: true,
+                                expiration: (get expiration txn),
                             })
                             ;; Log execution details
                             (print {
