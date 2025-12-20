@@ -136,7 +136,7 @@ This project will leverage Clarity 4 features for enhanced security and function
   - Test transaction is stored in transactions map
   - Test transaction is marked as not executed initially
 
-- [ ] **Issue #10**: ❌ PENDING - Write signature verification tests
+- [x] **Issue #10**: Write signature verification tests
   - Test hash-txn returns correct 32-byte buffer hash
   - Test hash-txn for different transactions returns different hashes
   - Test extract-signer with valid signature returns correct signer principal
