@@ -108,11 +108,13 @@ The multisig frontend follows this workflow:
 
 ### Pages
 
-- [ ] **Issue #31**: Create Home page
-  - Landing page design
-  - Connect wallet prompt
-  - Multisig discovery/search
-  - Create new multisig link
+- [x] **Issue #31**: Create Home page
+  - ✅ Landing page design with premium dark theme
+  - ✅ Connect wallet prompt (via Navbar integration)
+  - ✅ Overview section with multisig highlights
+  - ✅ Transaction flow visualization
+  - ✅ Signer visibility section
+  - ✅ Documentation section with links
 
 - [ ] **Issue #32**: Create Multisig page ([address]/page.tsx)
   - Display multisig dashboard
