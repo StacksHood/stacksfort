@@ -6,7 +6,7 @@
 ;;   - restrict-assets? (Issue #7) - Post-conditions for token transfers
 ;;   - stacks-block-time (Issue #15) - Transaction expiration
 ;;   - contract-hash? (Issue #7) - Token contract verification
-   ;;   - to-ascii? (Issues #2, #6, #7) - Enhanced logging
+;;   - to-ascii? (Issues #2, #6, #7) - Enhanced logging
 
 ;; SIP-010 trait import for token transfers
 (use-trait sip-010-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
@@ -61,6 +61,7 @@
 (define-constant ERR_INVALID_SIGNATURE (err u12))
 (define-constant ERR_INVALID_TOKEN (err u13))
 (define-constant ERR_STX_TRANSFER_FAILED (err u14))
+(define-constant ERR_REENTRANCY_DETECTED (err u15))
 
 ;; ============================================
 ;; Data Variables
@@ -69,6 +70,7 @@
 (define-data-var signers (list 100 principal) (list))
 (define-data-var threshold uint u0)
 (define-data-var txn-id uint u0)
+(define-data-var reentrancy-lock bool false)
 
 ;; ============================================
 ;; Maps
@@ -249,6 +251,10 @@
         ;; Verify contract is initialized
         (asserts! (var-get initialized) ERR_NOT_INITIALIZED)
 
+        ;; Reentrancy Check
+        (asserts! (not (var-get reentrancy-lock)) ERR_REENTRANCY_DETECTED)
+        (var-set reentrancy-lock true)
+
         ;; Verify caller is a signer
         (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_NOT_SIGNER)
 
@@ -305,9 +311,14 @@
                                     signatures: (len signatures),
                                     valid-signatures: valid-count
                                 })
+                                (var-set reentrancy-lock false)
                                 (ok true)
                             )
-                        err-value ERR_STX_TRANSFER_FAILED
+                        err-value 
+                            (begin
+                                (var-set reentrancy-lock false)
+                                ERR_STX_TRANSFER_FAILED
+                            )
                     )
                 )
             )
@@ -324,6 +335,10 @@
     (begin
         ;; Verify contract is initialized
         (asserts! (var-get initialized) ERR_NOT_INITIALIZED)
+
+        ;; Reentrancy Check
+        (asserts! (not (var-get reentrancy-lock)) ERR_REENTRANCY_DETECTED)
+        (var-set reentrancy-lock true)
 
         ;; Verify caller is a signer
         (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_NOT_SIGNER)
@@ -395,9 +410,14 @@
                                     signatures: (len signatures),
                                     valid-signatures: valid-count
                                 })
+                                (var-set reentrancy-lock false)
                                 (ok true)
                             )
-                        err-value ERR_STX_TRANSFER_FAILED
+                        err-value 
+                            (begin
+                                (var-set reentrancy-lock false)
+                                ERR_STX_TRANSFER_FAILED
+                            )
                     )
                 )
             )
