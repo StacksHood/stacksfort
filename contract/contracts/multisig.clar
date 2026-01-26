@@ -43,6 +43,7 @@
 (define-constant CONTRACT_OWNER 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 (define-constant MAX_SIGNERS u100)
 (define-constant MIN_SIGNATURES_REQUIRED u1)
+(define-constant DEFAULT_EXPIRATION_WINDOW u604800) ;; 7 days in seconds
 
 ;; ============================================
 ;; Error Constants
@@ -62,6 +63,7 @@
 (define-constant ERR_INVALID_TOKEN (err u13))
 (define-constant ERR_STX_TRANSFER_FAILED (err u14))
 (define-constant ERR_REENTRANCY_DETECTED (err u15))
+(define-constant ERR_TXN_EXPIRED (err u16))
 
 ;; ============================================
 ;; Data Variables
@@ -82,7 +84,8 @@
     amount: uint,
     recipient: principal,
     token: (optional principal),
-    executed: bool
+    executed: bool,
+    expiration: uint
   }
 )
 
@@ -131,11 +134,13 @@
 )
 
 ;; Issue #2: Submit a new transaction proposal
+;; Issue #15: Added optional expiration parameter
 (define-public (submit-txn
     (txn-type uint)
     (amount uint)
     (recipient principal)
     (token (optional principal))
+    (expiration (optional uint))
 )
     (begin
         ;; Verify contract is initialized
@@ -153,19 +158,23 @@
                 true
             )
             ;; Get current txn-id from storage
-            (let ((current-id (var-get txn-id)))
+            (let (
+                (current-id (var-get txn-id))
+                (expiry-time (default-to (+ stacks-block-time DEFAULT_EXPIRATION_WINDOW) expiration))
+            )
                 ;; Store transaction in transactions map
                 (map-set transactions current-id {
                     type: txn-type,
                     amount: amount,
                     recipient: recipient,
                     token: token,
-                    executed: false
+                    executed: false,
+                    expiration: expiry-time
                 })
                 ;; Increment txn-id by 1
                 (var-set txn-id (+ current-id u1))
                 ;; Print transaction details for logging
-                (print {txn-id: current-id, type: txn-type, amount: amount, recipient: recipient, token: token})
+                (print {txn-id: current-id, type: txn-type, amount: amount, recipient: recipient, token: token, expiration: expiry-time})
                 (ok current-id)
             )
         )
@@ -271,6 +280,9 @@
             ;; Verify transaction hasn't been executed
             (asserts! (not (get executed txn)) ERR_TXN_ALREADY_EXECUTED)
 
+            ;; Verify transaction has not expired
+            (asserts! (< stacks-block-time (get expiration txn)) ERR_TXN_EXPIRED)
+
             ;; Verify signatures list length >= threshold
             (asserts! (>= (len signatures) (var-get threshold)) ERR_INSUFFICIENT_SIGNATURES)
 
@@ -300,7 +312,8 @@
                                     amount: (get amount txn),
                                     recipient: (get recipient txn),
                                     token: (get token txn),
-                                    executed: true
+                                    executed: true,
+                                    expiration: (get expiration txn)
                                 })
                                 ;; Log execution details
                                 (print {
@@ -364,6 +377,9 @@
             ;; Verify transaction hasn't been executed
             (asserts! (not (get executed txn)) ERR_TXN_ALREADY_EXECUTED)
 
+            ;; Verify transaction has not expired
+            (asserts! (< stacks-block-time (get expiration txn)) ERR_TXN_EXPIRED)
+
             ;; Verify signatures list length >= threshold
             (asserts! (>= (len signatures) (var-get threshold)) ERR_INSUFFICIENT_SIGNATURES)
 
@@ -398,7 +414,8 @@
                                     amount: (get amount txn),
                                     recipient: (get recipient txn),
                                     token: (get token txn),
-                                    executed: true
+                                    executed: true,
+                                    expiration: (get expiration txn)
                                 })
                                 ;; Log execution details
                                 (print {
