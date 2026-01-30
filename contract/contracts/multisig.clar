@@ -45,6 +45,11 @@
 (define-constant MIN_SIGNATURES_REQUIRED u1)
 (define-constant DEFAULT_EXPIRATION_WINDOW u604800) ;; 7 days in seconds
 
+;; Transaction Types
+(define-constant TX_TYPE_STX u0)
+(define-constant TX_TYPE_TOKEN u1)
+(define-constant TX_TYPE_CONFIG u2)
+
 ;; ============================================
 ;; Error Constants (Grouped & Standardized)
 ;; ============================================
@@ -64,6 +69,7 @@
 (define-constant ERR_VAL_INVALID_TXN_TYPE (err u301))
 (define-constant ERR_VAL_INVALID_TXN_ID (err u302))
 (define-constant ERR_VAL_INVALID_TOKEN (err u303))
+(define-constant ERR_VAL_INVALID_CONFIG (err u304))
 
 ;; Transaction State Errors (u400-u499)
 (define-constant ERR_TX_ALREADY_EXECUTED (err u400))
@@ -95,7 +101,9 @@
     recipient: principal,
     token: (optional principal),
     executed: bool,
-    expiration: uint
+    expiration: uint,
+    new-signers: (optional (list 100 principal)),
+    new-threshold: (optional uint)
   }
 )
 
@@ -183,9 +191,9 @@
             ;; Validate amount > 0
             (asserts! (> amount u0) ERR_VAL_INVALID_AMOUNT)
             ;; Validate transaction type (0 = STX transfer, 1 = SIP-010 transfer)
-            (asserts! (or (is-eq txn-type u0) (is-eq txn-type u1)) ERR_VAL_INVALID_TXN_TYPE)
+            (asserts! (or (is-eq txn-type TX_TYPE_STX) (is-eq txn-type TX_TYPE_TOKEN)) ERR_VAL_INVALID_TXN_TYPE)
             ;; For type 1 (SIP-010), validate that token contract is provided
-            (if (is-eq txn-type u1)
+            (if (is-eq txn-type TX_TYPE_TOKEN)
                 (asserts! (is-some token) ERR_VAL_INVALID_TOKEN)
                 true
             )
@@ -201,7 +209,9 @@
                     recipient: recipient,
                     token: token,
                     executed: false,
-                    expiration: expiry-time
+                    expiration: expiry-time,
+                    new-signers: none,
+                    new-threshold: none
                 })
                 ;; Increment txn-id by 1
                 (var-set txn-id (+ current-id u1))
@@ -213,6 +223,50 @@
                     amount: amount, 
                     recipient: recipient, 
                     token: token, 
+                    expiration: expiry-time
+                })
+                (ok current-id)
+            )
+        )
+    )
+)
+
+;; Issue #15: Submit a management transaction to update owners/threshold
+(define-public (submit-config-txn
+    (new-signers-list (list 100 principal))
+    (new-threshold-value uint)
+    (expiration (optional uint))
+)
+    (begin
+        (asserts! (var-get initialized) ERR_AUTH_NOT_INITIALIZED)
+        (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_AUTH_NOT_SIGNER)
+        
+        ;; Validate new configuration
+        (let ((signers-count (len new-signers-list)))
+            (asserts! (<= signers-count MAX_SIGNERS) ERR_INIT_TOO_MANY_SIGNERS)
+            (asserts! (>= new-threshold-value MIN_SIGNATURES_REQUIRED) ERR_VAL_INVALID_CONFIG)
+            (asserts! (<= new-threshold-value signers-count) ERR_VAL_INVALID_CONFIG)
+
+            (let (
+                (current-id (var-get txn-id))
+                (expiry-time (default-to (+ stacks-block-time DEFAULT_EXPIRATION_WINDOW) expiration))
+            )
+                (map-set transactions current-id {
+                    type: TX_TYPE_CONFIG,
+                    amount: u0,
+                    recipient: (as-contract tx-sender),
+                    token: none,
+                    executed: false,
+                    expiration: expiry-time,
+                    new-signers: (some new-signers-list),
+                    new-threshold: (some new-threshold-value)
+                })
+                (var-set txn-id (+ current-id u1))
+                (print {
+                    event: "submit-config-txn",
+                    txn-id: current-id,
+                    new-signers: new-signers-list,
+                    new-threshold: new-threshold-value,
                     expiration: expiry-time
                 })
                 (ok current-id)
@@ -315,7 +369,7 @@
             (asserts! (< target-id (var-get txn-id)) ERR_VAL_INVALID_TXN_ID)
 
             ;; Verify transaction type is STX (0)
-            (asserts! (is-eq (get type txn) u0) ERR_VAL_INVALID_TXN_TYPE)
+            (asserts! (is-eq (get type txn) TX_TYPE_STX) ERR_VAL_INVALID_TXN_TYPE)
 
             ;; Verify transaction hasn't been executed
             (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
@@ -347,14 +401,7 @@
                         ok-value
                             (begin
                                 ;; Mark transaction as executed
-                                (map-set transactions target-id {
-                                    type: (get type txn),
-                                    amount: (get amount txn),
-                                    recipient: (get recipient txn),
-                                    token: (get token txn),
-                                    executed: true,
-                                    expiration: (get expiration txn)
-                                })
+                                (map-set transactions target-id (merge txn { executed: true }))
                                 ;; Issue #14: Standard event for execution
                                 (print {
                                     event: "execute-txn",
@@ -404,7 +451,7 @@
             (asserts! (< target-id (var-get txn-id)) ERR_VAL_INVALID_TXN_ID)
 
             ;; Verify transaction type is SIP-010 (1)
-            (asserts! (is-eq (get type txn) u1) ERR_VAL_INVALID_TXN_TYPE)
+            (asserts! (is-eq (get type txn) TX_TYPE_TOKEN) ERR_VAL_INVALID_TXN_TYPE)
 
             ;; Verify token principal is provided
             (asserts! (is-some (get token txn)) ERR_VAL_INVALID_TOKEN)
@@ -449,14 +496,7 @@
                         ok-value
                             (begin
                                 ;; Mark transaction as executed
-                                (map-set transactions target-id {
-                                    type: (get type txn),
-                                    amount: (get amount txn),
-                                    recipient: (get recipient txn),
-                                    token: (get token txn),
-                                    executed: true,
-                                    expiration: (get expiration txn)
-                                })
+                                (map-set transactions target-id (merge txn { executed: true }))
                                 ;; Issue #14: Standard event for execution
                                 (print {
                                     event: "execute-txn",
@@ -477,6 +517,57 @@
                             )
                     )
                 )
+            )
+        )
+    )
+)
+
+;; Issue #15: Execute a pending configuration change transaction
+(define-public (execute-config-txn
+    (target-id uint)
+    (signatures (list 100 (buff 65)))
+)
+    (begin
+        (asserts! (var-get initialized) ERR_AUTH_NOT_INITIALIZED)
+        (asserts! (not (var-get reentrancy-lock)) ERR_EXEC_REENTRANCY_DETECTED)
+        (var-set reentrancy-lock true)
+        (asserts! (is-some (index-of (var-get signers) tx-sender)) ERR_AUTH_NOT_SIGNER)
+
+        (let (
+            (txn (unwrap! (map-get? transactions target-id) ERR_VAL_INVALID_TXN_ID))
+        )
+            (asserts! (is-eq (get type txn) TX_TYPE_CONFIG) ERR_VAL_INVALID_TXN_TYPE)
+            (asserts! (not (get executed txn)) ERR_TX_ALREADY_EXECUTED)
+            (asserts! (< stacks-block-time (get expiration txn)) ERR_TX_EXPIRED)
+
+            (let (
+                (txn-hash (unwrap! (hash-txn target-id) ERR_VAL_INVALID_TXN_ID))
+                (result (fold
+                    count-valid-unique-signature
+                    signatures
+                    (build-signature-accumulator target-id txn-hash)
+                ))
+                (valid-count (get count result))
+                (new-signers-list (unwrap! (get new-signers txn) ERR_VAL_INVALID_CONFIG))
+                (new-threshold-val (unwrap! (get new-threshold txn) ERR_VAL_INVALID_CONFIG))
+            )
+                (asserts! (>= valid-count (var-get threshold)) ERR_EXEC_INSUFFICIENT_SIGNATURES)
+
+                ;; Apply new configuration
+                (var-set signers new-signers-list)
+                (var-set threshold new-threshold-val)
+                
+                (map-set transactions target-id (merge txn { executed: true }))
+
+                (print {
+                    event: "execute-config-txn",
+                    txn-id: target-id,
+                    signers: new-signers-list,
+                    threshold: new-threshold-val,
+                    valid-signatures: valid-count
+                })
+                (var-set reentrancy-lock false)
+                (ok true)
             )
         )
     )
