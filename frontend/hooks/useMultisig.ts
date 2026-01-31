@@ -397,6 +397,110 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     [wallet.address, address, name, getNetwork]
   );
 
+  /**
+   * Submit a configuration change transaction
+   */
+  const submitConfigTransaction = useCallback(
+    async (
+      newSigners: string[],
+      newThreshold: number,
+      expiration?: number
+    ): Promise<string | null> => {
+      if (!wallet.address) {
+        setError("Wallet not connected");
+        return null;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const expirationCV = expiration
+          ? someCV(uintCV(expiration))
+          : noneCV();
+
+        const signerCVs = newSigners.map((signer) => principalCV(signer));
+
+        const txOptions = {
+          network: getNetwork(),
+          anchorMode: AnchorMode.Any,
+          contractAddress: address,
+          contractName: name,
+          functionName: "submit-config-txn",
+          functionArgs: [
+            listCV(signerCVs),
+            uintCV(newThreshold),
+            expirationCV,
+          ],
+          senderKey: wallet.address,
+          postConditionMode: PostConditionMode.Deny,
+        };
+
+        const transaction = await makeContractCall(txOptions);
+        const broadcastResponse = await broadcastTransaction({
+          transaction,
+          network: getNetwork(),
+        });
+
+        return broadcastResponse.txid;
+      } catch (err) {
+        console.error("Error submitting config transaction:", err);
+        setError(err instanceof Error ? err.message : "Failed to submit config transaction");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [wallet.address, address, name, getNetwork]
+  );
+
+  /**
+   * Execute configuration change transaction
+   */
+  const executeConfigTransaction = useCallback(
+    async (txnId: number, signatures: string[]): Promise<string | null> => {
+      if (!wallet.address) {
+        setError("Wallet not connected");
+        return null;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        const signatureCVs = signatures.map((sig) =>
+          bufferCV(Buffer.from(sig, "hex"))
+        );
+
+        const txOptions = {
+          network: getNetwork(),
+          anchorMode: AnchorMode.Any,
+          contractAddress: address,
+          contractName: name,
+          functionName: "execute-config-txn",
+          functionArgs: [uintCV(txnId), listCV(signatureCVs)],
+          senderKey: wallet.address,
+          postConditionMode: PostConditionMode.Deny,
+        };
+
+        const transaction = await makeContractCall(txOptions);
+        const broadcastResponse = await broadcastTransaction({
+          transaction,
+          network: getNetwork(),
+        });
+
+        return broadcastResponse.txid;
+      } catch (err) {
+        console.error("Error executing config transaction:", err);
+        setError(err instanceof Error ? err.message : "Failed to execute config transaction");
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [wallet.address, address, name, getNetwork]
+  );
+
   // ============================================
   // Helper Functions
   // ============================================
@@ -497,8 +601,10 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     // Public functions
     initialize,
     submitTransaction,
+    submitConfigTransaction,
     executeStxTransfer,
     executeTokenTransfer,
+    executeConfigTransaction,
 
     // Helper functions
     isSigner,
