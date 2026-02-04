@@ -3,16 +3,34 @@
 import { useStacksWallet } from "@/hooks/useStacksWallet";
 import { MultisigDashboard } from "@/components/MultisigDashboard";
 import { TransactionList } from "@/components/TransactionList";
+import { CreateTransaction } from "@/components/CreateTransaction";
 import { CONTRACT_ADDRESS, CONTRACT_NAME } from "@/lib/constants";
-import { ShieldCheck, Coins, Zap, Wallet } from "lucide-react";
+import { ShieldCheck, Coins, Zap, Wallet, Plus } from "lucide-react";
+import { useState } from "react";
 
 export default function Home() {
   const { isSignedIn, connect } = useStacksWallet();
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // If wallet is connected, show the actual dashboard with real data
   if (isSignedIn) {
     return (
       <div className="space-y-10 py-10">
+        <header className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold text-white italic tracking-tight">Vault Terminal</h1>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Multisig Surveillance & Control</p>
+          </div>
+          
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center gap-2 rounded-2xl bg-amber-500 px-6 py-3 text-xs font-black uppercase tracking-widest text-zinc-950 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-amber-500/20"
+          >
+            <Plus className="h-4 w-4 stroke-[3]" />
+            New Transaction
+          </button>
+        </header>
+
         <section id="overview">
           <MultisigDashboard contractAddress={CONTRACT_ADDRESS} contractName={CONTRACT_NAME} />
         </section>
@@ -20,6 +38,20 @@ export default function Home() {
         <section id="transactions">
           <TransactionList contractAddress={CONTRACT_ADDRESS} contractName={CONTRACT_NAME} />
         </section>
+
+        {isCreateOpen && (
+          <CreateTransaction 
+            contractAddress={CONTRACT_ADDRESS}
+            contractName={CONTRACT_NAME}
+            onClose={() => setIsCreateOpen(false)}
+            onSuccess={(txid) => {
+              console.log("Transaction submitted:", txid);
+              setIsCreateOpen(false);
+              // In a real app, we'd trigger a list refresh here
+              // useMultisig hook should eventually handle this via polling or websocket
+            }}
+          />
+        )}
 
         <section id="docs" className="rounded-2xl border border-white/5 bg-white/5 p-6">
           <div className="flex items-center justify-between">
