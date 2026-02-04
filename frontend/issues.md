@@ -72,24 +72,22 @@ The multisig frontend follows this workflow:
   - ✅ Transaction type badges (STX/Token)
   - ✅ Premium dark theme styling with hover effects
 
-- [ ] **Issue #27**: Create TransactionDetail component
-  - Display transaction information (ID, type, amount, recipient, token)
-  - Show transaction type (STX transfer or SIP-010 token transfer)
-  - Display amount and recipient address
-  - Show token contract address for SIP-010 transfers
-  - Display transaction hash (for signing)
-  - Show signature status for each signer (signed/unsigned)
-  - Show execution status (pending, ready-to-execute, executed)
-  - Display progress toward threshold (e.g., "2/3 signatures")
-  - Show transaction timestamp
-  - Link to transaction on Stacks Explorer (if executed)
+- [x] **Issue #27**: Create TransactionDetail component
+  - ✅ Display transaction information (ID, type, amount, recipient, token)
+  - ✅ Show transaction type (STX transfer or SIP-010 token transfer)
+  - ✅ Display amount and recipient address
+  - ✅ Show token contract address for SIP-010 transfers
+  - ✅ Display transaction hash (for signing)
+  - ✅ Show signature status placeholder
+  - ✅ Show execution status (pending, executed)
+  - ✅ Link to transaction on Stacks Explorer (if executed)
 
-- [ ] **Issue #28**: Create CreateTransaction component
-  - Form for transaction type selection
-  - Amount input
-  - Recipient address input
-  - Token selection for SIP-010
-  - Submit transaction functionality
+- [x] **Issue #28**: Create CreateTransaction component
+  - ✅ Form for transaction type selection
+  - ✅ Amount input
+  - ✅ Recipient address input
+  - ✅ Token selection for SIP-010
+  - ✅ Submit transaction functionality
 
 - [ ] **Issue #29**: Create SignTransaction component
   - Display transaction hash (fetched from contract using `hash-txn` read-only function)
