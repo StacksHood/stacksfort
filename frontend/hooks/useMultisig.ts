@@ -16,6 +16,9 @@ import {
   bufferCV,
   someCV,
   noneCV,
+  FungibleConditionCode,
+  createSTXPostCondition,
+  createFTPostCondition,
 } from "@stacks/transactions";
 import { StacksNetwork } from "@stacks/network";
 import { useStacksWallet } from "./useStacksWallet";
@@ -297,7 +300,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   );
 
   const executeStxTransfer = useCallback(
-    async (txnId: number, signatures: string[]): Promise<string | null> => {
+    async (txnId: number, signatures: string[], amount: bigint): Promise<string | null> => {
       if (!wallet.address) {
         setError("Wallet not connected");
         return null;
@@ -307,6 +310,15 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
         setLoading(true);
         setError(null);
         const signatureCVs = signatures.map((sig) => bufferCV(Buffer.from(sig, "hex")));
+        
+        const postConditions = [
+          createSTXPostCondition(
+            `${address}.${name}`,
+            FungibleConditionCode.Equal,
+            amount
+          ),
+        ];
+
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -316,6 +328,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           functionArgs: [uintCV(txnId), listCV(signatureCVs)],
           senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
+          postConditions,
         };
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({
@@ -337,7 +350,8 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
     async (
       txnId: number,
       signatures: string[],
-      tokenContract: string
+      tokenContract: string,
+      amount: bigint
     ): Promise<string | null> => {
       if (!wallet.address) {
         setError("Wallet not connected");
@@ -348,6 +362,16 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
         setLoading(true);
         setError(null);
         const signatureCVs = signatures.map((sig) => bufferCV(Buffer.from(sig, "hex")));
+
+        const postConditions = [
+          createFTPostCondition(
+            `${address}.${name}`,
+            FungibleConditionCode.Equal,
+            amount,
+            tokenContract
+          ),
+        ];
+
         const txOptions = {
           network: getNetwork(),
           anchorMode: AnchorMode.Any,
@@ -361,6 +385,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
           ],
           senderKey: wallet.address,
           postConditionMode: PostConditionMode.Deny,
+          postConditions,
         };
         const transaction = await makeContractCall(txOptions);
         const broadcastResponse = await broadcastTransaction({

@@ -65,6 +65,7 @@ export function TransactionDetail({
   const [copiedHash, setCopiedHash] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
 
   // Get signatures for this transaction from our local store
   const localSignatures = useMemo(() => getTxnSignatures(transaction.id), [transaction.id, getTxnSignatures]);
@@ -89,6 +90,8 @@ export function TransactionDetail({
     }
   };
 
+  const { cancelTransaction, executeStxTransfer, executeTokenTransfer } = useMultisig(contractAddress, contractName);
+
   const handleCancel = async () => {
     if (!isCurrentUserSigner() || isCancelling) return;
     try {
@@ -100,6 +103,29 @@ export function TransactionDetail({
     } catch (err) {
       console.error("Error cancelling transaction:", err);
       setIsCancelling(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    if (signatureCount < threshold || isExecuting) return;
+
+    try {
+      setIsExecuting(true);
+      const signatureBuffs = localSignatures.map(s => s.signature);
+      
+      let txid;
+      if (transaction.type === TXN_TYPE_STX) {
+        txid = await executeStxTransfer(transaction.id, signatureBuffs, transaction.amount);
+      } else if (transaction.type === TXN_TYPE_TOKEN && transaction.token) {
+        txid = await executeTokenTransfer(transaction.id, signatureBuffs, transaction.token, transaction.amount);
+      }
+
+      console.log("Execution transaction broadcasted:", txid);
+      setIsExecuting(false);
+      onClose();
+    } catch (err) {
+      console.error("Error executing transaction:", err);
+      setIsExecuting(false);
     }
   };
 
@@ -355,8 +381,17 @@ export function TransactionDetail({
             )}
 
             {signatureCount >= threshold && !transaction.executed && !transaction.cancelled && (
-              <button className="flex items-center gap-2 bg-emerald-500 text-zinc-950 px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20">
-                <CheckCircle2 className="h-4 w-4" /> Execute
+              <button 
+                onClick={handleExecute}
+                disabled={isExecuting}
+                className="flex items-center gap-2 bg-emerald-500 text-zinc-950 px-6 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+              >
+                {isExecuting ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-950 border-t-transparent" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                Execute
               </button>
             )}
           </div>
