@@ -9,8 +9,12 @@
 (define-fungible-token mock-token)
 
 ;; Error constants
-(define-constant ERR_UNAUTHORIZED (err u1))
-
+(define-constant ERR_UNAUTHORIZED (err u100))
+(define-constant ERR_INVALID_AMOUNT (err u101))
+(define-constant ERR_TRANSFER_FAILED (err u102))
+(define-constant ERR_ZERO_AMOUNT (err u103))
+(define-constant ERR_SELF_TRANSFER (err u104))
+(define-constant ERR_CONTRACT_PAUSED (err u105))
 ;; SIP-010 Standard Functions
 
 ;; Transfer tokens from sender to recipient
