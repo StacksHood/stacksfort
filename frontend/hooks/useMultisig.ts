@@ -479,8 +479,8 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
 
   const fetchMultisigState = useCallback(async () => {
     try {
-      // Use the node API directly for data-vars to avoid CORS/indexing issues on the main API
-      const apiUrl = "https://stacks-node-api.mainnet.stacks.co";
+      // Use the local proxy for data-vars to avoid CORS issues
+      const apiUrl = "/api/stacks-node";
       const fetchDataVar = async (varName: string) => {
         const url = `${apiUrl}/v2/contracts/data-var/${address}/${name}/${varName}`;
         const response = await fetch(url);
@@ -518,7 +518,7 @@ export function useMultisig(contractAddress?: string, contractName?: string) {
   const fetchTransactions = useCallback(async () => {
     try {
       if (!multisigState) return;
-      const apiUrl = "https://stacks-node-api.mainnet.stacks.co";
+      const apiUrl = "/api/stacks-node";
       const txs: Transaction[] = [];
       
       for (let i = multisigState.nextTxnId - 1; i >= 0; i--) {
